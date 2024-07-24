@@ -33,12 +33,12 @@ def extract_sentences_from_pdf(pdf_path):
 # #pdf extract
 # def extract_sentences_from_pdf(pdf_path):
 #     sentences = []
-
+    
 #     # Iterate through all files in the folder
 #     for filename in os.listdir(pdf_path):
 #         if filename.lower().endswith('.pdf'):
 #             pdf_path = os.path.join(pdf_path, filename)
-
+            
 #             try:
 #                 with open(pdf_path, 'rb') as file:
 #                     reader = PyPDF2.PdfReader(file)
@@ -46,11 +46,11 @@ def extract_sentences_from_pdf(pdf_path):
 #                     for page in reader.pages:
 #                         if page.extract_text() is not None:
 #                             text += page.extract_text() + " "
-
+                
 #                 # Split the text into sentences
 #                 pdf_sentences = [sentence.strip() for sentence in text.split('. ') if sentence.strip()]
 #                 sentences.extend(pdf_sentences)
-
+                
 #                 print(f"Processed: {filename}")
 #             except Exception as e:
 #                 print(f"Error processing {filename}: {str(e)}")
@@ -95,7 +95,7 @@ def generate_and_save_embeddings(pdf_folder, sentence_file_path, embed_file_path
                 sentence_file.write('\n')
                 json.dump(embed_item, embed_file)
                 embed_file.write('\n')
-
+                      
 def upload_file(bucket_name,file_path):
     storage_client = storage.Client()
     bucket = storage_client.create_bucket(bucket_name,location=location)
@@ -121,7 +121,7 @@ def create_and_save_faiss_index(embed_file_path, index_file_path):
 
     # Create the index
     index = faiss.IndexFlatL2(d)
-
+    
     # Add vectors to the index
     index.add(embeddings_array)
 
@@ -142,15 +142,15 @@ def upload_to_gcs(bucket_name, source_file_path, destination_blob_name):
     print(f"File {source_file_path} uploaded to {destination_blob_name}.")
 
     # Upload both FAISS index and IDs file
-
+    
 def load_local_faiss_index(index_path, ids_path):
     # Load the FAISS index
     index = faiss.read_index(index_path)
-
+    
     # Load the IDs
     with open(ids_path, 'r') as id_file:
         ids = json.load(id_file)
-
+    
     return index, ids
 
 def create_vector_index(bucket_name, index_name):
@@ -197,30 +197,30 @@ def fetch_content_by_id(id, content_file_path):
 def answer_prompt(prompt, index, ids, content_file_path, model):
     # Generate embedding for the prompt
     query_embedding = generate_embedding(prompt)
-
+    
     # Search for similar items
     similar_items = search_faiss_index(index, ids, query_embedding)
-
+    
     # Fetch content for similar items
     context = ""
     for item in similar_items:
         content = fetch_content_by_id(item['id'], content_file_path)
         if content:
             context += content + " "
-
+    
     # Generate answer using Gemini Pro
     full_prompt = f"Based on the following context from a PDF:\n\n{context}\n\nAnswer this question: {prompt}"
     response = model.generate_content(full_prompt)
-
+    
     return response.text
 
 
 # Main execution
 if __name__ == "__main__":
-
+    
     ##### variables
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "drgenai-7daf412ca440.json"
-    project="drgenai"
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ""
+    project=""
     location="us-central1"
     pdf_path="pdf_docs"
     bucket_name = "resume-bucket-final"
@@ -228,11 +228,10 @@ if __name__ == "__main__":
     index_name="resume_index-final-try"
     embed_file_path = 'resume_embeddings.json'
     index_file_path = 'faiss_index'
-    aiplatform.init(project=project,location=location)
-
+    
     st.set_page_config("Chat with PDF")
     st.header("Chat with PDF using Google Cloud")
-
+    
     with st.sidebar:
         st.title("Menu:")
         pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
@@ -243,14 +242,14 @@ if __name__ == "__main__":
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
                 generate_and_save_embeddings(pdf_path,sentence_file_path,embed_file_path)
-                # upload_file(bucket_name,embed_file_path)
+                upload_file(bucket_name,embed_file_path)
                 # create_vector_index(bucket_name, index_name)
                 create_and_save_faiss_index(embed_file_path, index_file_path)
                 upload_to_gcs('resume-bucket-final', 'faiss_index', 'faiss_index')
                 upload_to_gcs('resume-bucket-final', 'faiss_index.ids', 'faiss_index.ids')
                 st.success("Done")
-
-
+                
+    
     user_question = st.text_input("Ask a Question from the Files")
     if st.button("Enter"):
         if user_question:
@@ -260,7 +259,7 @@ if __name__ == "__main__":
             index_path = "faiss_index"
             ids_path = "faiss_index.ids"
             content_file_path = "resume_sentences.json"
-
+            
             index, ids = load_local_faiss_index(index_path, ids_path)
 
             # Get user prompt
@@ -271,3 +270,8 @@ if __name__ == "__main__":
             print(answer)
         else:
             st.warning("Please enter the question.")
+    
+    
+    
+    
+    
